@@ -11,8 +11,6 @@
 #include "crude-xa.h"
 
 // shorten types and defs
-//typedef EXITH_VAL V;
-//typedef EXITH_DIG D;
 
 #define D XA_DIG
 #define V XA_VAL
