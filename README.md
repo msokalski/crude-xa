@@ -52,7 +52,7 @@ int main()
 {
     XA_VAL* f = CalcFactorial(100000);
     char* str;
-    int len = xa_extr_dec(factorial,&str);
+    int len = xa_extr_dec(f,&str);
     xa_free(f);
     printf("%s\n",str);
     free(str);
