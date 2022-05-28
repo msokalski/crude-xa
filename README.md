@@ -2,7 +2,7 @@
 ## Crude Exact Arithmetic in C/C++ 
 
 ### Using C++ interface
-```
+```C++
 #include "src/crude-xa.h"
 
 XA_REF CalcFactorial(unsigned num)
@@ -23,7 +23,7 @@ int main()
 ```
 
 ### Using C interface (not so pretty)
-```
+```C
 #include "src/crude-xa.h"
 
 XA_VAL* CalcFactorial(unsigned num)
