@@ -1,32 +1,3 @@
-# crude-xa
-## Crude Exact Arithmetic in C/C++ 
-
-### Using C++ interface
-```C++
-#include "src/crude-xa.h"
-
-XA_REF CalcFactorial(unsigned num)
-{
-    XA_REF factorial = 1.0;
-    XA_REF number = num;
-    for (XA_REF i=2.0; i<=number; i++)
-        factorial *= i;
-    return factorial;
-}
-
-int main()
-{
-    XA_REF f = CalcFactorial(100000);
-    std::cout << std::dec << f << std::endl;
-    return 0;
-}
-
-// build:
-// gcc example.c src/crude-xa.c -o example_c
-```
-
-### Using C interface (not so pretty)
-```C
 #include "src/crude-xa.h"
 #include <stdio.h>
 #include <stdlib.h>
@@ -64,6 +35,3 @@ int main()
     return 0;
 }
 
-// build:
-// g++ example.cpp src/crude-xa.c -o example_cpp
-```
