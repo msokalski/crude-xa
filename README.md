@@ -17,7 +17,7 @@ XA_REF CalcFactorial(unsigned num)
 int main()
 {
     XA_REF f = CalcFactorial(100000);
-    cout << std::dec << f << std::endl;
+    std::cout << std::dec << f << std::endl;
     return 0;
 }
 ```
