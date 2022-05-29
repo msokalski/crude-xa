@@ -111,9 +111,25 @@ struct XA_REF
         return *this;
     }
 
+    bool operator == (int i) const
+    {
+		XA_VAL* j = xa_load(i);
+        bool r = xa_cmp(v,j) == 0;
+		xa_free(j);
+		return r;
+    }
+
     bool operator == (const XA_REF& w) const
     {
         return xa_cmp(v,w.v) == 0;
+    }
+
+    bool operator != (int i) const
+    {
+		XA_VAL* j = xa_load(i);
+        bool r = xa_cmp(v,j) != 0;
+		xa_free(j);
+		return r;
     }
 
     bool operator != (const XA_REF& w) const
@@ -121,9 +137,25 @@ struct XA_REF
         return xa_cmp(v,w.v) != 0;
     }
 
+    bool operator < (int i) const
+    {
+		XA_VAL* j = xa_load(i);
+        bool r = xa_cmp(v,j) < 0;
+		xa_free(j);
+		return r;
+    }
+
     bool operator < (const XA_REF& w) const
     {
         return xa_cmp(v,w.v) < 0;
+    }
+
+    bool operator > (int i) const
+    {
+		XA_VAL* j = xa_load(i);
+        bool r = xa_cmp(v,j) > 0;
+		xa_free(j);
+		return r;
     }
 
     bool operator > (const XA_REF& w) const
@@ -131,9 +163,25 @@ struct XA_REF
         return xa_cmp(v,w.v) > 0;
     }
 
+    bool operator <= (int i) const
+    {
+		XA_VAL* j = xa_load(i);
+        bool r = xa_cmp(v,j) <= 0;
+		xa_free(j);
+		return r;
+    }
+
     bool operator <= (const XA_REF& w) const
     {
         return xa_cmp(v,w.v) <= 0;
+    }
+
+    bool operator >= (int i) const
+    {
+		XA_VAL* j = xa_load(i);
+        bool r = xa_cmp(v,j) >= 0;
+		xa_free(j);
+		return r;
     }
 
     bool operator >= (const XA_REF& w) const

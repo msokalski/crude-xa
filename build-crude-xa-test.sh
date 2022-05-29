@@ -2,8 +2,9 @@
 TMP=tmp
 BIN=bin
 
-OPT=-O3
+#OPT=-O3
 #OPT=-g
+OPT="-O3 -g"
 
 mkdir -p $TMP
 mkdir -p $BIN

@@ -1545,7 +1545,8 @@ V* xa_sub(const V *a, const V *b)
 	if (a->sign == b->sign)
 	{
 		V *r = xa_sub_abs(a, b);
-		r->sign ^= a->sign;
+		if (r)
+			r->sign ^= a->sign;
 		return r;
 	}
 
@@ -1553,7 +1554,8 @@ V* xa_sub(const V *a, const V *b)
 		return xa_add_abs(a, b);
 
 	V *r = xa_add_abs(b, a);
-	r->sign = 1;
+	if (r)
+		r->sign = 1;
 	return r;
 }
 

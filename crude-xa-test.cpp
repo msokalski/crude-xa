@@ -30,8 +30,20 @@ void check(const char *desc, long double v1, long double v2, long double r1, lon
 	}
 }
 
+#include <math.h>
+#include <float.h>
+
+volatile long double dup1; 
+volatile long double dup2; 
+
 int main()
 {
+	long double dup = 3.14;
+	dup1 = nexttoward(dup, +INFINITY);
+	dup2 = nexttoward(dup, -INFINITY);
+	printf("%Lf\n", dup1);
+	return 1;
+
 	struct PERF
 	{
 		typedef std::chrono::time_point<std::chrono::high_resolution_clock> timestamp;
