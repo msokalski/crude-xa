@@ -1,7 +1,7 @@
 #include <stdint.h>
 
 // must be enabled for xa_leaks
-#define XA_VAL_LEAKS
+// #define XA_VAL_LEAKS
 
 typedef uint32_t XA_DIG;
 #define XA_DIG_BYTES sizeof(XA_DIG)
@@ -33,7 +33,11 @@ extern "C" {
 XA_VAL* xa_alloc(int digs);
 void xa_free(XA_VAL* v);
 void xa_grab(XA_VAL* v);
+
+#ifdef XA_VAL_LEAKS
 int xa_leaks(int* bytes);
+void xa_break(int id);
+#endif
 
 int xa_extr_dec(const XA_VAL* v, char** str);
 int xa_extr_hex(const XA_VAL* v, char** str);

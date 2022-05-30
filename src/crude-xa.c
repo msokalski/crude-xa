@@ -61,8 +61,28 @@ typedef int _bool;
 #define _false 0
 #define _true 1
 
+#ifdef V_LEAKS
 static int alloc_bytes = 0;
 static int num_allocs = 0;
+
+struct Head
+{
+	Head* prev;
+	Head* next;
+	int id;
+};
+
+static const int head_bytes = ((sizeof(Head) -1) | 15) +1;
+
+static Head* leak_head = 0;
+static Head* leak_tail = 0;
+
+static int break_id = 0;
+
+void xa_break(int id)
+{
+	break_id = id;
+}
 
 int xa_leaks(int* bytes)
 {
@@ -70,6 +90,8 @@ int xa_leaks(int* bytes)
 		*bytes = alloc_bytes;
 	return num_allocs;
 }
+
+#endif
 
 V* xa_alloc(int digs)
 {
@@ -80,7 +102,28 @@ V* xa_alloc(int digs)
 	num_allocs++;
 	#endif
 
+	#ifdef V_LEAKS
+	static int id = 1;
+	if (id == break_id)
+	{
+		printf(" ");
+	}
+
+	Head* q = (Head*)malloc(s+head_bytes);
+	q->prev = 0;
+	q->next = leak_head;
+	if (leak_head)
+		leak_head->prev = q;
+	else
+		leak_tail = q;
+	leak_head = q;
+	q->id = id++;
+
+	V* v = (V*)((intptr_t)q + head_bytes);
+	#else
 	V* v = (V*)malloc(s);
+	#endif
+
 	v->refs = 1;
 	v->digs = digs;
 	return v;
@@ -97,8 +140,19 @@ void xa_free(V* v)
 			int s = sizeof(V) + v->digs * D_BYTES - D_BYTES;
 			alloc_bytes -= s;
 			num_allocs--;
+			Head* q = (Head*)((intptr_t)v - head_bytes);
+			if (q->prev)
+				q->prev->next = q->next;
+			else
+				leak_head = q->next;
+			if (q->next)
+				q->next->prev = q->prev;
+			else
+				leak_tail = q->prev;
+			free(q);
+			#else
+			free(v);
 			#endif
-		    free(v);
 		}
     }
 }
@@ -874,6 +928,8 @@ const V* xa_max(const V *a, const V *b)
 
 V* xa_abs(const V* v)
 {
+	if (!v)
+		return 0;
 	V *r = xa_cpy(v); // reference with abs bit ?
 	r->sign = 0;
 	return r;
@@ -881,6 +937,8 @@ V* xa_abs(const V* v)
 
 V* xa_neg(const V* v)
 {
+	if (!v)
+		return 0;
 	V *r = xa_cpy(v); // reference with neg bit ?
 	r->sign ^= 1;
 	return r;
@@ -1539,6 +1597,7 @@ V* xa_sub(const V *a, const V *b)
 		return v;
 	}
 
+
 	if (!b)
 		return xa_cpy(a);
 
@@ -1554,15 +1613,10 @@ V* xa_sub(const V *a, const V *b)
 		return xa_add_abs(a, b);
 
 	V *r = xa_add_abs(b, a);
-	if (r)
-		r->sign = 1;
+	r->sign = 1;
+
 	return r;
 }
-
-static int reallocs = 0;
-static int no_reallocs = 0;
-static int true_predicted_reallocs = 0;
-static int false_predicted_reallocs = 0;
 
 V* xa_mul(const V *a, const V *b)
 {
@@ -1653,11 +1707,6 @@ V* xa_mul(const V *a, const V *b)
 
 	if (!v->data[0])
 	{
-		if (predicted)
-			true_predicted_reallocs++;
-
-		reallocs++;
-
 		digs--;
 		V *r = xa_alloc(digs);
 		r->quot = v->quot - 1;
@@ -1667,13 +1716,6 @@ V* xa_mul(const V *a, const V *b)
 		xa_free(v);
 		v = r;
 	}
-	else
-	{
-		if (predicted)
-			false_predicted_reallocs++;
-		no_reallocs++;
-	}
-
 
 	return v;
 }
