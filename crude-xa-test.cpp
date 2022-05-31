@@ -171,8 +171,11 @@ int main()
 	}
 
 	//f0.print();
+	#ifdef XA_VAL_LEAKS
 	int bytes, allocs = xa_leaks(&bytes);
 	printf("LEAKED: %d bytes in %d allocs\n", bytes, allocs);
+	#endif
+	
 	exit(0);
 
 

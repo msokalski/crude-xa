@@ -3,8 +3,12 @@
 // must be enabled for xa_leaks
 // #define XA_VAL_LEAKS
 
+// crude-xa internal tests, this is super slow,
+// don't use unless you suspect a bug in crude-xa
+// #define XA_AUTO_TEST
+
 typedef uint32_t XA_DIG;
-#define XA_DIG_BYTES sizeof(XA_DIG)
+#define XA_DIG_BYTES ((int)sizeof(XA_DIG))
 #define XA_DIG_BITS (XA_DIG_BYTES * 8)
 #define XA_DIG_DEC_VAL 1000000000 // greatest 10^N smaller than 2^XA_DIG_BITS
 #define XA_DIG_DEC_POW 9		   // log10(DIG_DEC_VAL) == N
@@ -49,6 +53,17 @@ const XA_VAL* xa_min(const XA_VAL* a, const XA_VAL* b);
 const XA_VAL* xa_max(const XA_VAL* a, const XA_VAL* b);
 XA_VAL* xa_abs(const XA_VAL* v);
 XA_VAL* xa_neg(const XA_VAL* v);
+
+#ifdef XA_AUTO_TEST
+// only these 4 are auto tested
+// assuming xa_extr works fine
+#define xa_load xa_load_check
+#define xa_add xa_add_check
+#define xa_sub xa_sub_check
+#define xa_mul xa_mul_check
+#endif
+
+XA_VAL* xa_load(long double v);
 XA_VAL* xa_add(const XA_VAL* a, const XA_VAL* b);
 XA_VAL* xa_sub(const XA_VAL* a, const XA_VAL* b);
 XA_VAL* xa_mul(const XA_VAL* a, const XA_VAL* b);

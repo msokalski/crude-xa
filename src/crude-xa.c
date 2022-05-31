@@ -25,6 +25,91 @@
 #define V_LEAKS
 #endif
 
+#ifdef XA_AUTO_TEST
+
+#undef xa_load
+#undef xa_add
+#undef xa_sub
+#undef xa_mul
+
+XA_VAL* xa_load(long double f);
+XA_VAL* xa_add(const XA_VAL* a, const XA_VAL* b);
+XA_VAL* xa_sub(const XA_VAL* a, const XA_VAL* b);
+XA_VAL* xa_mul(const XA_VAL* a, const XA_VAL* b);
+
+V* xa_load_check(long double f)
+{
+	V* v = xa_load(f);
+	long double vf = xa_extr(v);
+	assert(f == vf);
+	return v;
+}
+
+V* xa_add_check(const V* a, const V* b)
+{
+	long double fa = xa_extr(a);
+	long double fb = xa_extr(b);
+
+	V* va = xa_load(fa);
+	V* vb = xa_load(fb);
+
+	long double fc = fa+fb;
+	V* vc = xa_add(va,vb);
+
+	long double vcf = xa_extr(vc);
+	assert(vcf == fc);
+
+	xa_free(va);
+	xa_free(vb);
+	xa_free(vc);
+
+	return xa_add(a,b);
+}
+
+V* xa_sub_check(const V* a, const V* b)
+{
+	long double fa = xa_extr(a);
+	long double fb = xa_extr(b);
+
+	V* va = xa_load(fa);
+	V* vb = xa_load(fb);
+
+	long double fc = fa-fb;
+	V* vc = xa_sub(va,vb);
+
+	long double vcf = xa_extr(vc);
+	assert(vcf == fc);
+
+	xa_free(va);
+	xa_free(vb);
+	xa_free(vc);
+
+	return xa_sub(a,b);
+}
+
+V* xa_mul_check(const V* a, const V* b)
+{
+	long double fa = xa_extr(a);
+	long double fb = xa_extr(b);
+
+	V* va = xa_load(fa);
+	V* vb = xa_load(fb);
+
+	long double fc = fa*fb;
+	V* vc = xa_mul(va,vb);
+
+	long double vcf = xa_extr(vc);
+	assert(vcf == fc);
+
+	xa_free(va);
+	xa_free(vb);
+	xa_free(vc);
+
+	return xa_mul(a,b);
+}
+
+#endif
+
 // TO CONSIDER:
 // refactor V::data from BigEndian to LittleEndian
 // that will make possible to ignore need for V reallocations:
