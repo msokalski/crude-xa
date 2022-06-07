@@ -22,7 +22,7 @@ int main()
 }
 
 // build:
-// gcc example.c src/crude-xa.c -o example_c
+// g++ example.cpp src/crude-xa.c -o example_cpp
 ```
 
 ### Using C interface (not so pretty)
@@ -65,5 +65,5 @@ int main()
 }
 
 // build:
-// g++ example.cpp src/crude-xa.c -o example_cpp
+// gcc example.c src/crude-xa.c -o example_c
 ```
