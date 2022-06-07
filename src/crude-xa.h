@@ -105,14 +105,15 @@ struct XA_REF
 
 	XA_REF& operator = (const XA_REF& w)
     {
-        xa_grab(w.v);
         xa_free(v);
+        xa_grab(w.v);
         v=w.v;
         return *this;
     }
 
 	XA_REF& operator = (const long double& f)
     {
+		xa_free(v);
         v=xa_load(f);
         return *this;
     }
@@ -125,6 +126,7 @@ struct XA_REF
 
 	XA_REF& operator = (XA_REF&& w)
     {
+		xa_free(v);
         v = w.v;
         w.v = 0;
         return *this;
