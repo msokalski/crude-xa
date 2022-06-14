@@ -5,7 +5,7 @@
 
 // crude-xa internal tests, this is super slow,
 // don't use unless you suspect a bug in crude-xa
-// #define XA_AUTO_TEST
+//#define XA_AUTO_TEST
 
 typedef uint32_t XA_DIG;
 #define XA_DIG_BYTES ((int)sizeof(XA_DIG))
@@ -33,6 +33,10 @@ extern "C" {
 #endif
 
 // LO LEVEL C API
+
+void xa_pool_alloc(int s);
+void xa_pool_free();
+int xa_pool_stat();
 
 XA_VAL* xa_alloc(int digs);
 void xa_free(XA_VAL* v);
@@ -105,9 +109,9 @@ struct XA_REF
 
 	XA_REF& operator = (const XA_REF& w)
     {
-        xa_free(v);
         xa_grab(w.v);
-        v=w.v;
+		xa_free(v);
+		v=w.v;
         return *this;
     }
 
@@ -127,10 +131,10 @@ struct XA_REF
 	XA_REF& operator = (XA_REF&& w)
     {
 		xa_free(v);
-        v = w.v;
-        w.v = 0;
-        return *this;
-    }
+		v = w.v;
+		w.v = 0;
+		return *this;
+	}
 
     bool operator == (int i) const
     {
@@ -260,7 +264,7 @@ struct XA_REF
 		if (v && i>0)
 		{
 			// no field names cuz ms
-			XA_VAL m = {/*sign:*/0,/*digs:*/1,/*quot:*/i/(int)XA_DIG_BITS,/*refs:*/0,
+			XA_VAL m = {/*sign:*/0,/*digs:*/1,/*quot:*/i/(int)XA_DIG_BITS,/*refs:*/1,
 			       /*data:*/{(XA_DIG)1<<(i%XA_DIG_BITS)}};
 			XA_REF r;
 			r.v = xa_mul(&m,v);
@@ -274,7 +278,7 @@ struct XA_REF
 		if (v && i>0)
 		{
 			// no field names cuz ms
-			XA_VAL m = {/*sign:*/0,/*digs:*/1,/*quot:*/i/(int)XA_DIG_BITS,/*refs:*/0,
+			XA_VAL m = {/*sign:*/0,/*digs:*/1,/*quot:*/i/(int)XA_DIG_BITS,/*refs:*/1,
 			       /*data:*/{(XA_DIG)1<<(i%XA_DIG_BITS)}};
 			XA_VAL* r = xa_mul(v,&m);
 			xa_free(v);
@@ -288,7 +292,7 @@ struct XA_REF
 		if (v && i>0)
 		{
 			// no field names cuz ms
-			XA_VAL m = {/*sign:*/0,/*digs:*/1,/*quot:*/-1-i/(int)XA_DIG_BITS,/*refs:*/0,
+			XA_VAL m = {/*sign:*/0,/*digs:*/1,/*quot:*/-1-i/(int)XA_DIG_BITS,/*refs:*/1,
 			       /*data:*/{(XA_DIG)1<<(XA_DIG_BITS-(i%XA_DIG_BITS))}};
 			XA_REF r;
 			r.v = xa_mul(&m,v);
@@ -302,7 +306,7 @@ struct XA_REF
 		if (v && i>0)
 		{
 			// no field names cuz ms
-			XA_VAL m = {/*sign:*/0,/*digs:*/1,/*quot:*/-1-i/(int)XA_DIG_BITS,/*refs:*/0,
+			XA_VAL m = {/*sign:*/0,/*digs:*/1,/*quot:*/-1-i/(int)XA_DIG_BITS,/*refs:*/1,
 				   /*data:*/{(XA_DIG)1<<(XA_DIG_BITS-(i%XA_DIG_BITS))}};
 			XA_VAL* r = xa_mul(v,&m);
 			xa_free(v);
@@ -352,7 +356,7 @@ struct XA_REF
 
 	XA_REF operator -- (int)
 	{
-		static const XA_VAL one{/*sign:*/0,/*digs:*/1,/*quot:*/0,/*refs:*/0,/*data:*/{(XA_DIG)1}};
+		static const XA_VAL one{/*sign:*/0,/*digs:*/1,/*quot:*/0,/*refs:*/1,/*data:*/{(XA_DIG)1}};
 		XA_REF r;
 		r.v = v;
 		v = xa_sub(v,&one);
@@ -361,7 +365,7 @@ struct XA_REF
 
 	XA_REF operator ++ (int)
 	{
-		static const XA_VAL one{/*sign:*/0,/*digs:*/1,/*quot:*/0,/*refs:*/0,/*data:*/{(XA_DIG)1}};
+		static const XA_VAL one{/*sign:*/0,/*digs:*/1,/*quot:*/0,/*refs:*/1,/*data:*/{(XA_DIG)1}};
 		XA_REF r;
 		r.v = v;
 		v = xa_add(v,&one);
@@ -370,7 +374,7 @@ struct XA_REF
 
 	const XA_VAL* operator -> () const
 	{
-		static const XA_VAL null{/*sign:*/0,/*digs:*/0,/*quot:*/0,/*refs:*/0,/*data:*/{(XA_DIG)0}};
+		static const XA_VAL null{/*sign:*/0,/*digs:*/0,/*quot:*/0,/*refs:*/1,/*data:*/{(XA_DIG)0}};
 		if (v)
 			return v;
 		else

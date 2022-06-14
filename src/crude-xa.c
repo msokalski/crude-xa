@@ -37,6 +37,15 @@ XA_VAL* xa_add(const XA_VAL* a, const XA_VAL* b);
 XA_VAL* xa_sub(const XA_VAL* a, const XA_VAL* b);
 XA_VAL* xa_mul(const XA_VAL* a, const XA_VAL* b);
 
+static void check(const char *desc, long double xa, long double ld)
+{
+	if (fabs(xa-ld) > fabs(ld) * pow(2.0, -52))
+	{
+		printf("%s\n",desc);
+		// exit(0);
+	}
+}
+
 V* xa_load_check(long double f)
 {
 	V* v = xa_load(f);
@@ -57,13 +66,16 @@ V* xa_add_check(const V* a, const V* b)
 	V* vc = xa_add(va,vb);
 
 	long double vcf = xa_extr(vc);
-	assert(vcf == fc);
+	//assert(vcf == fc);
+	check("ADD",vcf, fc);
+
+	V* v = xa_add(a, b);
 
 	xa_free(va);
 	xa_free(vb);
 	xa_free(vc);
 
-	return xa_add(a,b);
+	return v;
 }
 
 V* xa_sub_check(const V* a, const V* b)
@@ -78,13 +90,16 @@ V* xa_sub_check(const V* a, const V* b)
 	V* vc = xa_sub(va,vb);
 
 	long double vcf = xa_extr(vc);
-	assert(vcf == fc);
+	//assert(vcf == fc);
+	check("SUB",vcf, fc);
+
+	V* v = xa_sub(a, b);
 
 	xa_free(va);
 	xa_free(vb);
 	xa_free(vc);
 
-	return xa_sub(a,b);
+	return v;
 }
 
 V* xa_mul_check(const V* a, const V* b)
@@ -99,13 +114,16 @@ V* xa_mul_check(const V* a, const V* b)
 	V* vc = xa_mul(va,vb);
 
 	long double vcf = xa_extr(vc);
-	assert(vcf == fc);
+	//assert(vcf == fc);
+	check("MUL",vcf, fc);
+
+	V* v = xa_mul(a, b);
 
 	xa_free(va);
 	xa_free(vb);
 	xa_free(vc);
 
-	return xa_mul(a,b);
+	return v;
 }
 
 #endif
@@ -178,6 +196,48 @@ int xa_leaks(int* bytes)
 
 #endif
 
+static int xa_pool_size = 0;
+static V** xa_pool;
+
+void xa_pool_alloc(int s)
+{
+	for (int i = s; i < xa_pool_size; i++)
+	{
+		V* v = xa_pool[i];
+		while (v)
+		{
+			V* n = *(V**)v;
+			free(v);
+			v = n;
+		}
+	}
+
+	xa_pool = (V**)realloc(xa_pool,sizeof(V*)*s);
+
+	if (s > xa_pool_size)
+		memset(xa_pool + xa_pool_size, 0, sizeof(V*)*(s - xa_pool_size));
+
+	xa_pool_size = s;
+}
+
+void xa_pool_free()
+{
+	for (int i = 0; i < xa_pool_size; i++)
+	{
+		V* v = xa_pool[i];
+		while (v)
+		{
+			V* n = *(V**)v;
+			free(v);
+			v = n;
+		}
+	}
+
+	free(xa_pool);
+	xa_pool_size = 0;
+	xa_pool = 0;
+}
+
 V* xa_alloc(int digs)
 {
 	int s = sizeof(V) + digs * D_BYTES - D_BYTES;
@@ -191,7 +251,7 @@ V* xa_alloc(int digs)
 	static int id = 1;
 	if (id == break_id)
 	{
-		printf(" ");
+		printf("break alloc %d\n", break_id);
 	}
 
 	Head* q = (Head*)malloc(s+head_bytes);
@@ -206,7 +266,15 @@ V* xa_alloc(int digs)
 
 	V* v = (V*)((intptr_t)q + head_bytes);
 	#else
-	V* v = (V*)malloc(s);
+
+	V* v;
+	if (digs < xa_pool_size && xa_pool[digs])
+	{
+		v = xa_pool[digs];
+		xa_pool[digs] = *(V**)v;
+	}
+	else
+		v = (V*)malloc(s);
 	#endif
 
 	v->refs = 1;
@@ -236,7 +304,14 @@ void xa_free(V* v)
 				leak_tail = q->prev;
 			free(q);
 			#else
-			free(v);
+			int digs = v->digs;
+			if (digs < xa_pool_size)
+			{
+				*(V**)v = xa_pool[digs];
+				xa_pool[digs] = v;
+			}
+			else
+				free(v);
 			#endif
 		}
     }
@@ -244,8 +319,8 @@ void xa_free(V* v)
 
 void xa_grab(V* v)
 {
-    if (v)
-        v->refs++;
+	if (v)
+		v->refs++;
 }
 
 int xa_extr_dec(const V* v, char **str)
@@ -928,6 +1003,7 @@ V* xa_cpy(const V* v)
 	memcpy(ret->data, v->data, v->digs * D_BYTES);
 	ret->sign = v->sign;
 	ret->quot = v->quot;
+
 	return ret;
 }
 
@@ -1072,6 +1148,7 @@ static V* xa_add_abs(const V *a, const V *b)
 
 	int adig = a->digs - 1;
 	int bdig = b->digs - 1;
+	int zero = 1;
 
 	if (tail_a == tail_b)
 	{
@@ -1079,19 +1156,69 @@ static V* xa_add_abs(const V *a, const V *b)
 		// to see how many zeros we can get there.
 		// we keep result of lowest significant non-zero digit and carry flag
 		// se we will be able to continue after allocating destination
-
 		while (adig >= 0 && bdig >= 0)
 		{
 			sum += a->data[adig--];
 			sum += b->data[bdig--];
 
 			if (!D_MASK(sum)/*(sum & mask)*/)
+			{
 				digs--;
+			}
 			else
+			{
+				zero = 0;
 				break;
+			}
 
 			sum >>= D_BITS;
 		}
+
+		if (zero)
+		{
+			while (adig >= 0)
+			{
+				sum += a->data[adig--];
+
+				if (!D_MASK(sum)/*(sum & mask)*/)
+				{
+					digs--;
+				}
+				else
+				{
+					zero = 0;
+					break;
+				}
+
+				sum >>= D_BITS;
+			}
+
+			while (bdig >= 0)
+			{
+				sum += b->data[bdig--];
+
+				if (!D_MASK(sum)/*(sum & mask)*/)
+				{
+					digs--;
+				}
+				else
+				{
+					zero = 0;
+					break;
+				}
+
+				sum >>= D_BITS;
+			}
+		}
+
+		/*
+		// todo: fixme to avoid 0 digs allocs & reallocs to 1
+		if (!digs)
+		{
+			head++;
+			digs = 1;
+		}
+		*/
 	}
 
 	// we alloc V optimistically
@@ -1252,68 +1379,32 @@ static V* xa_add_abs(const V *a, const V *b)
 		// we've already started this case
 		// store current values and continue
 
-		v->data[dig--] = D_MASK(sum); //(D)(sum & mask);
-		sum >>= D_BITS;
-
-		if (a->quot >= b->quot)
+		if (!zero && dig>=0)
 		{
-			// [aaaaaaa...]
-			// [   [bbb...]
-
-			// sum aaa+bbb (possibly 0 len)
-			int num = digs - 1 - (a->quot - b->quot);
-			for (int i = 0; i < num; i++)
-			{
-				sum += a->data[adig--];
-				sum += b->data[bdig--];
-				v->data[dig--] = D_MASK(sum); //(D)(sum & mask);
-				sum >>= D_BITS;
-			}
-			// continue with [aaa (possibly 0 len)
-			num = a->quot - b->quot;
-			for (int i = 0; i < num; i++)
-			{
-				if (!sum)
-				{
-					// memcpy
-					// break
-					memcpy(v->data, a->data, (num-i) * D_BYTES);
-					break;
-				}
-				sum += a->data[adig--];
-				v->data[dig--] = D_MASK(sum); //(D)(sum & mask);
-				sum >>= D_BITS;
-			}
+			v->data[dig--] = D_MASK(sum); //(D)(sum & mask);
+			sum >>= D_BITS;
 		}
-		else
-		{
-			//     [aaa...]
-			// [bbbbbbb...]
 
-			// sum aaa+bbb (possibly 0 len)
-			int num = digs - 1 - (b->quot - a->quot);
-			for (int i = 0; i < num; i++)
-			{
-				sum += a->data[adig--];
-				sum += b->data[bdig--];
-				v->data[dig--] = D_MASK(sum); //(D)(sum & mask);
-				sum >>= D_BITS;
-			}
-			// continue with [bbb
-			num = b->quot - a->quot;
-			for (int i = 0; i < num; i++)
-			{
-				if (!sum)
-				{
-					// memcpy
-					// break
-					memcpy(v->data, b->data, (num-i) * D_BYTES);
-					break;
-				}
-				sum += b->data[bdig--];
-				v->data[dig--] = D_MASK(sum); //(D)(sum & mask);
-				sum >>= D_BITS;
-			}
+		while (adig >= 0 && bdig >= 0)
+		{
+			sum += a->data[adig--];
+			sum += b->data[bdig--];
+			v->data[dig--] = D_MASK(sum); //(D)(sum & mask);
+			sum >>= D_BITS;
+		}
+
+		while (adig >= 0)
+		{
+			sum += a->data[adig--];
+			v->data[dig--] = D_MASK(sum); //(D)(sum & mask);
+			sum >>= D_BITS;
+		}
+
+		while (bdig >= 0)
+		{
+			sum += b->data[bdig--];
+			v->data[dig--] = D_MASK(sum); //(D)(sum & mask);
+			sum >>= D_BITS;
 		}
 	}
 
@@ -1413,6 +1504,7 @@ static V* xa_sub_abs(const V *a, const V *b)
 			v->sign = swapped ? 1 : 0;
 			v->quot = head - dig;
 			memcpy(v->data, a->data + dig, v->digs * D_BYTES);
+
 			return v;
 		}
 
@@ -1452,8 +1544,11 @@ static V* xa_sub_abs(const V *a, const V *b)
 		if (dig == num)
 		{
 			// continue with longer till contains 0s
-			while (dig < digs && !a->data[dig])
+			while (dig < digs && !a->data[adig])
+			{
+				adig--;
 				dig++;
+			}
 		}
 
 		// trim
@@ -1478,7 +1573,7 @@ static V* xa_sub_abs(const V *a, const V *b)
 	// run borrowing algorithm on trimmed range (A is always bigger here but not neccessarily longer)
 	uint64_t sum = 0; // 0 - not borrowed, 1 - borrowed
 
-	if (tail_a >= b->quot)
+	if (tail_a >= b->quot && bdig>=0)
 	{
 		// not trimmed
 		// [aa] [bbbb]
@@ -1629,18 +1724,21 @@ static V* xa_sub_abs(const V *a, const V *b)
 
 	// it may happen that due to borrowing one or more head digits has gone (equals 0)
 	// in such case realloc V and trim zeros out
-
-	if (v->data[0] == 0)
+	int clip = 0;
+	while (v->data[clip] == 0)
+		clip++;
+	if (clip)
 	{
-		borrow_underflows++;
+		borrow_underflows += clip;
 
-		head--;
-		digs--;
+		head-=clip;
+		digs-=clip;
+
 		V *r = xa_alloc(digs);
 		r->sign = swapped ? 1 : 0;
 		r->quot = head;
 
-		memcpy(r->data, v->data + 1, digs * D_BYTES);
+		memcpy(r->data, v->data + clip, digs * D_BYTES);
 
 		xa_free(v);
 		v = r;
